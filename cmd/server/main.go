@@ -34,13 +34,14 @@ func handleForward(conn net.Conn) {
 		return
 	}
 	conn2 := <-connChan
+	//前四个字节是真实ip
 	conn2.Write(ip4)
-	for {
-		io.Copy(conn2, conn)
-		io.Copy(conn, conn2)
-	}
+	//开始转发
+	go io.Copy(conn2, conn)
+	go io.Copy(conn, conn2)
 }
 
+// 监听玩家连接
 func listen1() {
 	listener, err := net.Listen("tcp", listenAddr1)
 	if err != nil {
@@ -56,10 +57,12 @@ func listen1() {
 			fmt.Printf("接受连接错误: %v\n", err)
 			continue
 		}
+		//收到玩家连接就开始转发
 		go handleForward(conn)
 	}
 }
 
+// 监听frpc连接
 func listen2() {
 	listener, err := net.Listen("tcp", listenAddr2)
 	if err != nil {

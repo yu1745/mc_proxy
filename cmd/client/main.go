@@ -23,11 +23,13 @@ func init() {
 
 func connect() {
 	for {
+		//空闲连接不够了就新建连接
 		if len(connChan) < cacheConnCount {
 			conn, err := net.Dial("tcp", remoteAddr)
 			if err != nil {
 				continue
 			}
+			//空闲连接+1
 			connChan <- struct{}{}
 			go handle(conn)
 		}
@@ -36,6 +38,7 @@ func connect() {
 }
 
 func handle(conn net.Conn) {
+	//前四个字节是真实ip
 	ip4 := make([]byte, 4)
 	nR, err := conn.Read(ip4)
 	if err != nil {
@@ -46,6 +49,8 @@ func handle(conn net.Conn) {
 		fmt.Printf("读取ip失败: %v\n", err)
 		return
 	}
+	//空闲连接-1
+	<-connChan
 	ip6 := make([]byte, 16)
 	//设置前缀fd80
 	ip6[0] = 0xfd
@@ -70,17 +75,20 @@ func handle(conn net.Conn) {
 		IP:   net.ParseIP(host),
 		Port: portN,
 	}
+	//使用映射地址去连接游戏服务器
 	netConn, err := net.DialTCP("ip6", lAddr, rAddr)
 	if err != nil {
 		fmt.Printf("连接游戏服务器失败: %v\n", err)
 		return
 	}
-	for {
-		io.Copy(netConn, conn)
-		io.Copy(conn, netConn)
-	}
+	//开始转发
+	go io.Copy(netConn, conn)
+	go io.Copy(conn, netConn)
 }
 
 func main() {
 	go connect()
+	// 创建一个永不关闭的通道，用于阻塞主函数，防止程序退出
+	bl := make(chan struct{})
+	<-bl
 }
