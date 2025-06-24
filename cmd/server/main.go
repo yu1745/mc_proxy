@@ -51,6 +51,7 @@ func handleForward(conn net.Conn) {
 		return
 	}
 	conn2 := <-connChan
+	fmt.Printf("use conn:%v\n", conn2.RemoteAddr())
 	//前四个字节是真实ip
 	conn2.Write(ip4)
 	//开始转发
@@ -74,6 +75,7 @@ func listen1() {
 			fmt.Printf("接受连接错误: %v\n", err)
 			continue
 		}
+		fmt.Printf("收到玩家连接: %v\n", conn.RemoteAddr())
 		//收到玩家连接就开始转发
 		go handleForward(conn)
 	}

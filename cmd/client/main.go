@@ -29,6 +29,7 @@ func connect() {
 			if err != nil {
 				continue
 			}
+			fmt.Printf("新空闲连接:%v\n", conn.RemoteAddr())
 			//空闲连接+1
 			connChan <- struct{}{}
 			go handle(conn)
@@ -55,7 +56,10 @@ func handle(conn net.Conn) {
 	//设置前缀fd80
 	ip6[0] = 0xfd
 	ip6[1] = 0x80
-	copy(ip6[12:], ip4)
+	ip6[9] = ip4[0]
+	ip6[11] = ip4[1]
+	ip6[13] = ip4[2]
+	ip6[15] = ip4[3]
 	// 连接游戏服务器
 	lAddr := &net.TCPAddr{
 		IP:   ip6,
@@ -76,7 +80,7 @@ func handle(conn net.Conn) {
 		Port: portN,
 	}
 	//使用映射地址去连接游戏服务器
-	netConn, err := net.DialTCP("ip6", lAddr, rAddr)
+	netConn, err := net.DialTCP("tcp6", lAddr, rAddr)
 	if err != nil {
 		fmt.Printf("连接游戏服务器失败: %v\n", err)
 		return
