@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os/exec"
 )
 
 var listenAddr1 string
@@ -17,7 +18,23 @@ func init() {
 	flag.Parse()
 }
 
+func netConfig() error {
+	cmd := exec.Command("sysctl", "-w", "net.ipv6.ip_nonlocal_bind=1")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to set ip_nonlocal_bind: %v", err)
+	}
+
+	cmd = exec.Command("ip", "r", "add", "local", "fd80::/64", "dev", "lo")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to add ipv6 route: %v", err)
+	}
+	return nil
+}
+
 func main() {
+	if err := netConfig(); err != nil {
+		fmt.Printf("网络配置失败: %v\n", err)
+	}
 	go listen1() // 监听玩家连接
 	go listen2() // 监听frpc连接
 	// 创建一个永不关闭的通道，用于阻塞主函数，防止程序退出
